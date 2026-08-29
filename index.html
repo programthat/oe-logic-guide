@@ -1,0 +1,10 @@
+<h1>Redirecting...</h1>
+<script>
+  function getelm(id,d=document){return d.getElementById(id)}
+  setTimeout(() => {
+    window.location = "/root";
+    getelm('btn').style.display = 'block';
+  }, 100);
+</script>
+
+<a id="btn" style="display: none" href="/root"><h2>Page diden't load? Click here!</h2></a>
