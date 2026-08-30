@@ -1,0 +1,32 @@
+{
+	// structure
+	basic: 15000,
+
+	// drivetrain; the PBR set is capped harder because those models are far heavier
+	wheel: 400,
+	pbrwheel: 200,
+	gear: 300,
+
+	// joints and actuators, the expensive part being the physics constraint each one creates
+	hinge: 1000,
+	slider: 300,
+
+	// propulsion and flight
+	engine: 400,
+	propellant: 200,
+	wing: 1000,
+
+	// ordnance
+	tnt: 200,
+
+	// interaction
+	button: 250,
+	seat: 100,
+
+	// utility
+	lamp: 400,
+	rope: 100,
+
+	// special
+	rom: 1,
+}

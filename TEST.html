@@ -1,0 +1,45 @@
+<!-- Marked Lib Test -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Logic Guide Table</title>
+    <!-- 1. Include the Marked library via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@18.0.11/lib/marked.umd.min.js"></script>
+    <style>
+      body { font-family: sans-serif; padding: 20px; background: #121212; color: #e0e0e0; }
+      table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+      th, td { border: 1px solid #444; padding: 10px; text-align: left; }
+      th { background-color: #1e1e1e; color: #ff9800; }
+      tr:nth-child(even) { background-color: #1a1a1a; }
+      ul { line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+
+    <h1>Block Logic Guide</h1>
+
+    <!-- 2. The container where the generated HTML will go -->
+    <div id="guide-content"></div>
+
+    <script>
+      // 3. Your Markdown data (perfect for your block logic guide)
+      const markdownData = `
+### Logic Blocks Overview
+Here is the current logic breakdown for the guide:
+* **Inputs:** Buttons, switches, sensors.
+* **Gates:** AND, OR, XOR.
+
+| Block Name | Logic Type | Power Draw | Description |
+| :--- | :--- | :--- | :--- |
+| **AND Gate** | Combinational | 2W | Outputs true if both inputs are active. |
+| **OR Gate** | Combinational | 2W | Outputs true if at least one input is active. |
+| **Timer** | Component | 5W | Sends a pulse every *X* ticks. |
+`;
+
+      // 4. Parse the Markdown into the HTML container
+      document.getElementById('guide-content').innerHTML = marked.parse(markdownData);
+    </script>
+
+  </body>
+</html>

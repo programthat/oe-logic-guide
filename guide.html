@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logic Build Guide</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@18.0.11/lib/marked.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f9fafb;
+            --sidebar-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --hover-color: #f3f4f6;
+            --active-color: #dbeafe;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+            background-color: var(--bg-color);
+        }
+
+        /* Sidebar Styles */
+        #sidebar {
+            width: 320px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+            background: var(--sidebar-bg);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .tree-container {
+            padding: 10px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 16px;
+            margin: 4px 0;
+        }
+
+        /* Folder Dropdown Styles */
+        .folder {
+            cursor: pointer;
+            font-weight: 600;
+            user-select: none;
+            padding: 6px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+        .folder:hover {
+            background-color: var(--hover-color);
+        }
+
+        .folder::before {
+            content: "▶";
+            font-size: 0.7em;
+            margin-right: 8px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .folder.open::before {
+            transform: rotate(90deg);
+        }
+
+        .folder-content {
+            display: none;
+        }
+
+        .folder-content.open {
+            display: block;
+        }
+
+        /* Block Item Styles */
+        .block-item {
+            cursor: pointer;
+            font-weight: 400;
+            margin: 2px 0;
+            padding: 6px 6px 6px 24px;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+
+        .block-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .block-item.active {
+            background-color: var(--active-color);
+            color: #1e40af;
+            font-weight: 500;
+        }
+
+        /* Main Content Styles */
+        #content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .markdown-body {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .markdown-body img {
+            max-width: 100%;
+        }
+
+        .markdown-body pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        .markdown-body code {
+            font-family: monospace;
+            background: #e5e7eb;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .error-box {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid #f87171;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header">Logic Build Guide</div>
+        <div class="tree-container" id="tree-container">
+            <div style="padding: 10px; color: #6b7280;">Loading blocks...</div>
+        </div>
+    </div>
+
+    <div id="content">
+        <div class="markdown-body" id="markdown-container">
+            <h1>Welcome to the Logic Build Guide</h1>
+            <p>Select a block from the sidebar to load its documentation.</p>
+        </div>
+    </div>
+
+    <script>
+        let currentBlockId = null;
+        let openFolders = new Set();
+        let initialBlockToLoad = null;
+
+        async function init() {
+            // 1. Get block ID from URL
+            const params = new URLSearchParams(window.location.search);
+            currentBlockId = params.get('block');
+
+            // Clean up legacy URL params
+            if (params.has('open')) {
+                updateUrlState();
+            }
+
+            // 2. Load opened folders from LocalStorage
+            try {
+                const savedOpen = localStorage.getItem('logicGuideOpenFolders');
+                if (savedOpen) {
+                    const parsed = JSON.parse(savedOpen);
+                    if (Array.isArray(parsed)) {
+                        parsed.forEach(folder => openFolders.add(folder));
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not read from LocalStorage', e);
+            }
+
+            try {
+                const response = await fetch('./basic_blocks.json');
+                if (!response.ok) throw new Error('Could not load basic_blocks.json');
+                const blockData = await response.json();
+
+                // 3. Pre-process active deep-link parents BEFORE DOM creation
+                if (currentBlockId && blockData[currentBlockId]) {
+                    initialBlockToLoad = { id: currentBlockId, ...blockData[currentBlockId] };
+                    const folderPath = initialBlockToLoad.assetFolder || 'Uncategorized';
+                    const folderParts = folderPath.split('/').filter(p => p.trim() !== '');
+
+                    let accumulatedPath = '';
+                    for (const part of folderParts) {
+                        accumulatedPath = accumulatedPath ? `${accumulatedPath}/${part}` : part;
+                        openFolders.add(accumulatedPath);
+                    }
+                    saveFolderState(); // Sync it
+                }
+
+                // 4. Construct Hierarchy
+                const blocksByFolder = {};
+                for (const [id, block] of Object.entries(blockData)) {
+                    const folderPath = block.assetFolder || 'Uncategorized';
+                    const folderParts = folderPath.split('/').filter(p => p.trim() !== '');
+
+                    let current = blocksByFolder;
+                    for (const part of folderParts) {
+                        if (!current[part]) current[part] = {};
+                        current = current[part];
+                    }
+
+                    if (!current._blocks) current._blocks = [];
+                    current._blocks.push({ id, ...block });
+                }
+
+                // 5. Render to screen
+                const treeContainer = document.getElementById('tree-container');
+                treeContainer.innerHTML = '';
+
+                const buildTreeDOM = createTreeDOM(blocksByFolder, 'Root', '');
+
+                // Wrap in a clean UL so it's perfectly valid HTML
+                const rootList = document.createElement('ul');
+                rootList.style.paddingLeft = '0'; // Remove indent for root list
+
+                for (const child of Array.from(buildTreeDOM.querySelector('.folder-content').children)) {
+                    rootList.appendChild(child);
+                }
+                treeContainer.appendChild(rootList);
+
+                // 6. Load initial block data if applicable
+                if (initialBlockToLoad) {
+                    loadBlockData(initialBlockToLoad);
+                }
+
+            } catch (err) {
+                document.getElementById('tree-container').innerHTML = `<div style="color:red; padding: 10px;">Error: ${err.message}</div>`;
+                console.error(err);
+            }
+        }
+
+        // Saves only the URL block state
+        function updateUrlState() {
+            const url = new URL(window.location);
+            if (currentBlockId) {
+                url.searchParams.set('block', currentBlockId);
+            } else {
+                url.searchParams.delete('block');
+            }
+            url.searchParams.delete('open');
+            window.history.replaceState({}, '', url);
+        }
+
+        // Immediately writes the dropdown state to LocalStorage
+        function saveFolderState() {
+            try {
+                localStorage.setItem('logicGuideOpenFolders', JSON.stringify(Array.from(openFolders)));
+            } catch (e) {
+                console.warn('Could not save to LocalStorage', e);
+            }
+        }
+
+        function createTreeDOM(node, folderName, parentPath) {
+            const container = document.createElement('div');
+
+            const currentPath = parentPath ? `${parentPath}/${folderName}` : folderName;
+
+            const folderLabel = document.createElement('div');
+            folderLabel.className = 'folder';
+            folderLabel.textContent = folderName;
+
+            const ul = document.createElement('ul');
+            ul.className = 'folder-content';
+
+            if (openFolders.has(currentPath)) {
+                folderLabel.classList.add('open');
+                ul.classList.add('open');
+            }
+
+            folderLabel.onclick = (e) => {
+                e.stopPropagation();
+
+                const isOpen = folderLabel.classList.toggle('open');
+                ul.classList.toggle('open');
+
+                if (isOpen) {
+                    openFolders.add(currentPath);
+                } else {
+                    openFolders.delete(currentPath);
+                }
+
+                saveFolderState();
+            };
+
+            container.appendChild(folderLabel);
+            container.appendChild(ul);
+
+            const keys = Object.keys(node).filter(k => k !== '_blocks').sort();
+            for (const key of keys) {
+                const li = document.createElement('li');
+                li.appendChild(createTreeDOM(node[key], key, currentPath === 'Root' ? '' : currentPath));
+                ul.appendChild(li);
+            }
+
+            if (node._blocks) {
+                node._blocks.sort((a, b) => (a.displayName || a.id).localeCompare(b.displayName || b.id));
+
+                node._blocks.forEach(block => {
+                    const li = document.createElement('li');
+                    li.className = 'block-item';
+
+                    let label = block.displayName || block.id;
+                    if (block.devOnly) label += ' [DEV]';
+                    if (block.hidden) label += ' [HIDDEN]';
+
+                    li.textContent = label;
+
+                    if (block.id === currentBlockId) {
+                        li.classList.add('active');
+                    }
+
+                    li.onclick = (e) => {
+                        e.stopPropagation();
+
+                        document.querySelectorAll('.block-item').forEach(el => el.classList.remove('active'));
+                        li.classList.add('active');
+
+                        currentBlockId = block.id;
+                        updateUrlState();
+                        loadBlockData(block);
+                    };
+                    ul.appendChild(li);
+                });
+            }
+
+            return container;
+        }
+
+        let blockFamiliesCache = null;
+
+        async function getBlockFamilies() {
+            if (blockFamiliesCache !== null) return blockFamiliesCache;
+
+            try {
+                const response = await fetch('./block_data/BlockLimits.txt');
+                if (!response.ok) throw new Error('File not found');
+
+                const scriptText = await response.text();
+
+                // Wrapping in parentheses forces JS to read it as a data object
+                const extractor = new Function(`return (${scriptText});`);
+                blockFamiliesCache = extractor();
+
+            } catch (err) {
+                console.warn('Could not load blockFamilies:', err);
+                blockFamiliesCache = {}; // Fallback to empty object if it fails
+            }
+
+            return blockFamiliesCache;
+        }
+
+        async function loadBlockData(block) {
+            const mdContainer = document.getElementById('markdown-container');
+            mdContainer.innerHTML = '<p><em>Loading documentation...</em></p>';
+
+            // Fetch the families object
+            const blockFamilies = await getBlockFamilies();
+
+            // Helper strings for complex conditional logic
+            const limitHtml = `${block.limit} ${block.limitFamily ? `(Family: ${block.limitFamily})` : ''}`;
+            const aliasesHtml = block.aliases ? `<li><strong>Aliases:</strong> ${block.aliases.join(', ')}</li>` : '';
+
+            // The default full-list HTML
+            const defaultDetailsHtml = `
+<ul>
+    <li><strong>ID:</strong> <code>${block.id}</code></li>
+    <li><strong>Description:</strong> ${block.description || 'N/A'}</li>
+    <li><strong>TypeScript Path:</strong> <code>${block.tsPath}</code></li>
+    <li><strong>Asset Folder:</strong> <code>${block.assetFolder}</code></li>
+    <li><strong>Limit:</strong> ${limitHtml}</li>
+    ${aliasesHtml}
+</ul>`;
+
+            try {
+                const response = await fetch(`./block_data/${block.id}.md`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load ./block_data/${block.id}.md (HTTP ${response.status})`);
+                }
+
+                let mdText = await response.text();
+
+                // The regex now grabs everything inside {{ }} using (.+?)
+                mdText = mdText.replace(/\{\{(.+?)\}\}/g, (match, jsCode) => {
+
+                    const code = jsCode.trim();
+
+                    if (code === 'blockDetails') {
+                        return defaultDetailsHtml;
+                    }
+
+                    try {
+                        const evaluator = new Function('block', 'blockFamilies', `return ${code};`);
+                        const result = evaluator(block, blockFamilies);
+
+                        return result !== undefined && result !== null ? result : '';
+                    } catch (e) {
+                        // If their JS is invalid, log it and leave the {{tag}} in the text
+                        console.warn(`Template evaluation error for "{{${code}}}":`, e.message);
+                        return match;
+                    }
+                });
+
+                // Parse markdown to HTML
+                mdContainer.innerHTML = marked.parse(mdText);
+
+            } catch (err) {
+                mdContainer.innerHTML = `
+                    <div class="error-box">
+                        <strong>Missing Documentation</strong><br>
+                        ${err.message}
+                    </div>
+                    <h2>${block.displayName || block.id}</h2>
+                    <p><em>This data is generated from basic_blocks.json because the markdown file was not found.</em></p>
+                    <hr>
+                    ${defaultDetailsHtml}
+                `;
+                console.error(err);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
