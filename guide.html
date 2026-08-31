@@ -366,7 +366,7 @@
             if (blockFamiliesCache !== null) return blockFamiliesCache;
 
             try {
-                const response = await fetch('./block_data/BlockLimits.txt');
+                const response = await fetch('./block_data/UE/BlockLimits.txt');
                 if (!response.ok) throw new Error('File not found');
 
                 const scriptText = await response.text();
@@ -406,9 +406,9 @@
 </ul>`;
 
             try {
-                const response = await fetch(`./block_data/${block.id}.md`);
+                const response = await fetch(`./block_data/UE/${block.id}.md`);
                 if (!response.ok) {
-                    throw new Error(`Failed to load ./block_data/${block.id}.md (HTTP ${response.status})`);
+                    throw new Error(`Failed to load ./block_data/UE/${block.id}.md (HTTP ${response.status})`);
                 }
 
                 let mdText = await response.text();
@@ -440,8 +440,8 @@
             } catch (err) {
                 mdContainer.innerHTML = `
                     <div class="error-box">
-                        <strong>Missing Documentation</strong><br>
-                        ${err.message}
+                        <strong>Missing Docs</strong><br>
+                        The docs for this block have not been implemented yet
                     </div>
                     <h2>${block.displayName || block.id}</h2>
                     <p><em>This data is generated from basic_blocks.json because the markdown file was not found.</em></p>
