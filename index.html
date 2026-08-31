@@ -1,18 +1,23 @@
 <head>
-    <script sr="utils.js"></script>
+    <script src="./utils.js"></script>
 </head>
 
 <body>
     <!-- Redirect user to actual guide -->
 
     <h1>Redirecting...</h1>
-    <script>
-        setTimeout(() => {
-            window.location.replace("./oe-logic-guide/guide.html");
-        }, 0);
-    </script>
-
-    <a id="btn" href="./oe-logic-guide/guide.html">
+    <a id="btn" href="#">
         <h2>Page diden't redirect? Click here!</h2>
     </a>
+
+    <script>
+        const isGithub = window.location.origin.replace(/https?:\/\//).startsWith('127.0.0.1');
+        console.log("Is Github:", isGithub);
+        const baseHref = isGithub ? './oe-logic-guide/' : './';
+        const guidePath = baseHref + 'guide.html';
+        getelm('btn').href = guidePath;
+        setTimeout(() => {
+            window.location.replace(guidePath);
+        }, 0);
+    </script>
 </body>
