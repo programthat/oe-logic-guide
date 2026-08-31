@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <base href="./oe-logic-guide">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logic Build Guide</title>
@@ -180,8 +179,13 @@
         let openFolders = new Set();
         let initialBlockToLoad = null;
 
+        // Base URL swaps when running locally
+        const isGithub = window.location.origin.replace(/https?:\/\//).startsWith('127.0.0.1');
+        console.log("Is Github:", isGithub);
+        const baseHref = isGithub ? './oe-logic-guide/' : './';
+
         async function init() {
-            // 1. Get block ID from URL
+            // Get block ID from URL
             const params = new URLSearchParams(window.location.search);
             currentBlockId = params.get('block');
 
@@ -190,7 +194,7 @@
                 updateUrlState();
             }
 
-            // 2. Load opened folders from LocalStorage
+            // Load opened folders from LocalStorage
             try {
                 const savedOpen = localStorage.getItem('logicGuideOpenFolders');
                 if (savedOpen) {
@@ -204,11 +208,11 @@
             }
 
             try {
-                const response = await fetch('./basic_blocks.json');
+                const response = await fetch(baseHref + 'basic_blocks.json');
                 if (!response.ok) throw new Error('Could not load basic_blocks.json');
                 const blockData = await response.json();
 
-                // 3. Pre-process active deep-link parents BEFORE DOM creation
+                // Pre-process active deep-link parents BEFORE DOM creation
                 if (currentBlockId && blockData[currentBlockId]) {
                     initialBlockToLoad = { id: currentBlockId, ...blockData[currentBlockId] };
                     const folderPath = initialBlockToLoad.assetFolder || 'Uncategorized';
@@ -222,7 +226,7 @@
                     saveFolderState(); // Sync it
                 }
 
-                // 4. Construct Hierarchy
+                // Construct Hierarchy
                 const blocksByFolder = {};
                 for (const [id, block] of Object.entries(blockData)) {
                     const folderPath = block.assetFolder || 'Uncategorized';
@@ -238,7 +242,7 @@
                     current._blocks.push({ id, ...block });
                 }
 
-                // 5. Render to screen
+                // Render to screen
                 const treeContainer = document.getElementById('tree-container');
                 treeContainer.innerHTML = '';
 
@@ -253,7 +257,7 @@
                 }
                 treeContainer.appendChild(rootList);
 
-                // 6. Load initial block data if applicable
+                // Load initial block data if applicable
                 if (initialBlockToLoad) {
                     loadBlockData(initialBlockToLoad);
                 }
@@ -367,7 +371,7 @@
             if (blockFamiliesCache !== null) return blockFamiliesCache;
 
             try {
-                const response = await fetch('./block_data/UE/BlockLimits.txt');
+                const response = await fetch(baseHref + 'block_data/UE/BlockLimits.txt');
                 if (!response.ok) throw new Error('File not found');
 
                 const scriptText = await response.text();
@@ -407,9 +411,9 @@
 </ul>`;
 
             try {
-                const response = await fetch(`./block_data/UE/${block.id}.md`);
+                const response = await fetch(baseHref + `block_data/UE/${block.id}.md`);
                 if (!response.ok) {
-                    throw new Error(`Failed to load ./block_data/UE/${block.id}.md (HTTP ${response.status})`);
+                    throw new Error(`Failed to load ${baseHref}block_data/UE/${block.id}.md (HTTP ${response.status})`);
                 }
 
                 let mdText = await response.text();
