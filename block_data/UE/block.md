@@ -1,3 +1,7 @@
+---
+render_with_liquid: false
+---
+
 # {{block.displayName}}
 
 A basic block, you can scale and rotate to your needs, not much else.

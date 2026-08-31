@@ -1,3 +1,7 @@
+---
+render_with_liquid: false
+---
+
 # {{block.displayName}}
 
 Adds two numbers together.
